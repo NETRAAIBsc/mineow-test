@@ -2667,6 +2667,69 @@ body::after{
 <style id="mineow-remove-title-rules">
 .p3r-small-rule{display:none !important;}
 </style>
+
+<style id="mineow-depth1-spacing-fix">
+/* DEPTH 1 typography spacing normalization */
+.p3r-signal-copy{
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+  gap:10px !important;
+  padding:18px 20px !important;
+}
+.p3r-signal-copy .p3r-unlocked{
+  margin:0 !important;
+}
+.p3r-signal-copy h3{
+  margin:0 !important;
+  line-height:1.04 !important;
+}
+.p3r-signal-copy .p3r-small-rule{
+  display:none !important;
+}
+.p3r-signal-copy p{
+  margin:0 !important;
+  line-height:1.55 !important;
+  max-width:42ch;
+}
+@media(max-width:560px){
+  .p3r-signal-copy{
+    gap:9px !important;
+    padding:16px !important;
+  }
+  .p3r-signal-copy h3{
+    line-height:1.06 !important;
+  }
+  .p3r-signal-copy p{
+    line-height:1.5 !important;
+    max-width:none;
+  }
+}
+</style>
+
+<style id="mineow-depth1-heading-spacing">
+/* Depth 1 typography rhythm: keep large gold headings and white copy evenly spaced. */
+.p3r-build-copy h3{
+  margin:5px 0 6px !important;
+  line-height:1.04 !important;
+}
+.p3r-build-copy p{
+  margin:0 !important;
+  line-height:1.58 !important;
+}
+.p3r-signal-copy h3{
+  margin:11px 0 7px !important;
+  line-height:1 !important;
+}
+.p3r-signal-copy p{
+  margin:0 !important;
+  line-height:1.62 !important;
+}
+@media(max-width:560px){
+  .p3r-build-copy h3{margin:4px 0 6px !important;}
+  .p3r-signal-copy h3{margin:9px 0 7px !important;}
+}
+</style>
 </head>
 <body>
   <div class="gold-dust" aria-hidden="true"></div>
