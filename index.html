@@ -3129,21 +3129,21 @@ async function copyContract(btn) {
       el.classList.remove('current','depth-unlocked');
       node?.classList.remove('current');
 
-      // Depths already passed display an opened vault. Future depths stay sealed.
-      if(n < currentDepth){
+      // Every unlocked depth keeps Miner Cat visible as a permanent journey marker.
+      // Future depths remain sealed with the vault/lock icon.
+      if(n <= currentDepth){
         el.classList.add('depth-unlocked');
-        if(node && !node.querySelector('.p3-vault-svg') && lockTemplate){
-          node.innerHTML=lockTemplate+numBadge(n);
+        if(node){
+          node.innerHTML='<div class="p3r-cat"></div>'+numBadge(n);
         }
+      }else if(node && lockTemplate){
+        node.innerHTML=lockTemplate+numBadge(n);
       }
 
-      // Current depth carries Miner Cat.
+      // Only the newest unlocked depth is marked as the current location.
       if(n===currentDepth){
         el.classList.add('current');
         node?.classList.add('current');
-        if(node && !node.querySelector('.p3r-cat')){
-          node.innerHTML='<div class="p3r-cat"></div>'+numBadge(n);
-        }
       }
     });
 
