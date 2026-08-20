@@ -2633,6 +2633,36 @@ body::after{
 
 
 <!-- V5.4AG: CTA deduplication only; layout/CSS unchanged -->
+
+<style id="mineow-unlocked-cat-consistency">
+/* All unlocked Depth markers use the exact same Miner Cat presentation as the newest unlocked Depth. */
+.p3r-level.depth-unlocked .p3r-cat,
+.p3r-level.current .p3r-cat{
+  background-size:124% !important;
+  background-position:50% 38% !important;
+}
+.p3r-level.depth-unlocked .p3r-cat::after,
+.p3r-level.current .p3r-cat::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-2px;
+  transform:translateX(-50%);
+  width:34px;
+  height:20px;
+  border-radius:18px 18px 0 0;
+  background:linear-gradient(180deg,rgba(13,8,3,.08) 0%,rgba(8,5,2,.82) 48%,rgba(8,5,2,1) 100%);
+  pointer-events:none;
+}
+@media(max-width:560px){
+  .p3r-level.depth-unlocked .p3r-cat,
+  .p3r-level.current .p3r-cat{
+    background-size:124% !important;
+    background-position:50% 38% !important;
+  }
+}
+</style>
+
 </head>
 <body>
   <div class="gold-dust" aria-hidden="true"></div>
