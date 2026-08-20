@@ -2600,6 +2600,21 @@ body::after{
 @media(max-width:560px){
   .p3r-track::after{top:43px;left:8%}
 }
+
+/* V5.4AH TEST PATCH — passed depths stay visibly unlocked */
+.p3r-level.depth-unlocked .p3-vault-svg .lock-shackle{
+  transform-box:fill-box!important;
+  transform-origin:20% 100%!important;
+  transform:translate(-5px,-8px) rotate(-34deg)!important;
+}
+.p3r-level.depth-unlocked .p3-vault-svg{
+  filter:drop-shadow(0 0 14px rgba(255,214,90,.72))!important;
+  opacity:1!important;
+}
+.p3r-level.depth-unlocked .p3r-node::before{
+  border-color:rgba(255,221,121,.92)!important;
+  box-shadow:0 0 24px rgba(255,194,55,.38),inset 0 0 0 6px rgba(255,213,105,.07)!important;
+}
 </style>
 
 
@@ -2765,14 +2780,13 @@ body::after{
           <p class="muted">Completed phases are marked green; the deeper phases remain ahead.</p>
         </div>
         <div class="mine-levels">
-          <div class="glass mine-level done reveal"><div class="level-marker">✓</div><div class="level-copy"><small>PHASE 01 // COMPLETE</small><h3>Open the Mine</h3><p>Brand identity, website, logo, meme story and official channels.</p></div><div class="depth">0M</div></div>
-          <div class="glass mine-level done reveal"><div class="level-marker">✓</div><div class="level-copy"><small>PHASE 02 // COMPLETE</small><h3>Strike First Gold</h3><p>Token launch, official contract links, GMGN access and first community activity.</p></div><div class="depth">250M</div></div>
+          <div class="glass mine-level done reveal"><div class="level-marker">✓</div><div class="level-copy"><small>PHASE 01 // COMPLETE</small><h3>Open the Mine</h3><p>Brand identity, website, logo, meme story and official channels.</p></div></div>
+          <div class="glass mine-level done reveal"><div class="level-marker">✓</div><div class="level-copy"><small>PHASE 02 // COMPLETE</small><h3>Strike First Gold</h3><p>Token launch, official contract links, GMGN access and first community activity.</p></div></div>
           
           <div class="glass mine-level phase3-roadmap reveal">
             <div class="phase3-roadmap-head">
               <div class="level-marker">03</div>
               <div class="level-copy"><small>PHASE 03 // ACTIVE BUILD</small><h3>Community Tunnel</h3><p>The mine is opening one sealed depth at a time.</p></div>
-              <div class="depth">500M</div>
             </div>
 
             <div class="p3r-shell">
@@ -2935,12 +2949,6 @@ body::after{
                 </div>
               </div>
 
-              <div class="p3r-stats">
-                <div class="p3r-stat green"><span class="p3r-stat-icon"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="4.5"/><path d="M32 20c6 0 11 5 11 11M32 14c10 0 18 8 18 18M32 26c3 0 6 3 6 6M20 45c3-6 7-9 12-9s9 3 12 9"/></svg></span><div><small>STATUS</small><strong>Signal detected</strong><em>Depth 1 active</em></div></div>
-                <div class="p3r-stat"><span class="p3r-stat-icon"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M16 18c10-6 22-6 32 0"/><path d="M20 20l24 24"/><path d="M44 20L20 44"/></svg></span><div><small>DEPTH</small><strong>120m underground</strong><em>Echoing ahead</em></div></div>
-                <div class="p3r-stat"><span class="p3r-stat-icon"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="18" cy="20" r="5"/><circle cx="31" cy="14" r="5"/><circle cx="45" cy="20" r="5"/><circle cx="15" cy="34" r="4.5"/><path d="M32 28c-9 0-16 8-14 16 2 8 10 6 14 3 3 3 12 5 14-3 2-8-5-16-14-16z"/></svg></span><div><small>NEXT STEP</small><strong>Unlock Depth 2</strong><em>Follow the signal</em></div></div>
-              </div>
-
               <div id="mineow-depth-modules" class="mineow-depth-modules" aria-live="polite"></div>
 
               <div class="p3r-build">
@@ -2959,8 +2967,8 @@ body::after{
               </div>
             </div>
           </div>
-          <div class="glass mine-level reveal"><div class="level-marker">04</div><div class="level-copy"><small>PHASE 04 // DEEPER</small><h3>Expansion Shaft</h3><p>Broader visibility, project partnerships and community-led campaigns.</p></div><div class="depth">750M</div></div>
-          <div class="glass mine-level reveal"><div class="level-marker">05</div><div class="level-copy"><small>PHASE 05 // LEGENDARY</small><h3>The Gold Chamber</h3><p>Long-term Miner Cat universe, new community ideas and brand extensions.</p></div><div class="depth">1000M</div></div>
+          <div class="glass mine-level reveal"><div class="level-marker">04</div><div class="level-copy"><small>PHASE 04 // DEEPER</small><h3>Expansion Shaft</h3><p>Broader visibility, project partnerships and community-led campaigns.</p></div></div>
+          <div class="glass mine-level reveal"><div class="level-marker">05</div><div class="level-copy"><small>PHASE 05 // LEGENDARY</small><h3>The Gold Chamber</h3><p>Long-term Miner Cat universe, new community ideas and brand extensions.</p></div></div>
         </div>
       </div>
     </section>
