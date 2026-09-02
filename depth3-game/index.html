@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#090705">
+<title>MINEOW — Depth 3</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050403;font-family:Arial,Helvetica,sans-serif;color:#ffd86a}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050403}
+canvas{display:block;background:#0a0805;max-width:100vw;max-height:100vh;touch-action:none}
+#rotate{display:none;position:fixed;inset:0;z-index:20;background:#070604;color:#ffd76a;align-items:center;justify-content:center;text-align:center;padding:32px;font-size:20px}
+#rotate strong{display:block;font-size:28px;margin-bottom:12px}
+#message{display:none}
+#hud{position:fixed;left:0;right:0;top:0;z-index:8;display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;pointer-events:none}
+.badge{background:rgba(8,6,4,.70);border:1px solid rgba(255,210,70,.45);border-radius:16px;padding:8px 12px;box-shadow:0 3px 18px #0008;font-weight:700;text-shadow:0 1px 2px #000}
+#controls{position:fixed;inset:0;z-index:10;pointer-events:none}
+#joy{position:absolute;left:12px;bottom:max(14px,env(safe-area-inset-bottom));width:108px;height:108px;border-radius:50%;background:rgba(20,27,31,.68);border:2px solid #ffffff33;pointer-events:auto;touch-action:none}
+#knob{position:absolute;left:33px;top:33px;width:42px;height:42px;border-radius:50%;background:#5c6970;border:2px solid #ffffff33;box-shadow:0 5px 14px #0009}
+.btn{position:absolute;width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(20,27,31,.78);border:2px solid #ffffff35;font-size:34px;color:#fff;box-shadow:0 5px 16px #0009;pointer-events:auto;touch-action:none}
+#jump{right:22px;bottom:max(28px,env(safe-area-inset-bottom));background-image:url('assets/ui/jump_icon_approved.png');background-size:cover;background-position:center;background-repeat:no-repeat;border:none}
+#smash{right:108px;bottom:max(28px,env(safe-area-inset-bottom));font-size:30px}
+#webExit{right:20px;top:60px;width:60px;height:60px;z-index:11;background-image:url('assets/ui/return_web_icon_approved.png');background-size:cover;background-position:center;background-repeat:no-repeat;border:none}
+#back{right:20px;top:126px;width:60px;height:60px;border-radius:50%;display:none;background-image:url('assets/ui/back_icon_approved.png');background-size:cover;background-position:center;background-repeat:no-repeat;border:none}
+#returnWeb{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);z-index:12;border:2px solid #ffcc3c;background:linear-gradient(#8a5a10,#4b2b08);color:#fff4bf;padding:14px 22px;border-radius:14px;font-weight:900;font-size:18px;display:none;box-shadow:0 4px 20px #000}
+@media (orientation:portrait) and (max-width:900px){#rotate{display:flex;flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="1280" height="720"></canvas></div>
+<div id="rotate"><strong>⛏️ MINEOW DEPTH 3</strong>Rotate your phone to landscape to explore the mine.</div>
+<div id="hud"><div class="badge">🪙 <span id="coins">0</span></div><div class="badge">🔑 <span id="key">0</span></div></div>
+<div id="message"></div>
+<div id="controls">
+  <div id="joy"><div id="knob"></div></div>
+  <div id="smash" class="btn">⛏️</div>
+  <div id="jump" class="btn" aria-label="Jump"></div>
+  <div id="webExit" class="btn" aria-label="Return to Depth 3 website"></div>
+  <div id="back" class="btn" aria-label="Back"></div>
+</div>
+<button id="returnWeb">RETURN TO MINEOW</button>
+<script>
+(()=> {
+const W=1280,H=720, canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=true;
+
+const img={};
+const load=(k,s)=>new Promise(r=>{let i=new Image();i.onload=()=>{img[k]=i;r()};i.src=s});
+const coinFiles=[...Array(12)].map((_,i)=>`assets/coin/MINEOW_Coin_${String(i).padStart(2,'0')}.png`);
+const jobs=[
+ load('main','assets/rooms/main_cave.png'), load('merchRoom','assets/rooms/merch_room.png'),
+ load('artifactRoom','assets/rooms/artifact_room.png'), load('depth4','assets/rooms/depth4_secret.png'),
+ load('idle','assets/player/idle.png'),load('walk1','assets/player/walk1.png'),load('walk2','assets/player/walk2.png'),
+ load('walk3','assets/player/walk3.png'),load('walk4','assets/player/walk4.png'),load('jumpP','assets/player/jump.png'),load('smash1','assets/player/smash1.png'),load('smash2','assets/player/smash2.png'),
+ load('merchN','assets/doors/door_wood_normal.png'),load('merchC','assets/doors/door_wood_cracked.png'),load('merchB','assets/doors/door_wood_broken.png'),
+ load('artN','assets/doors/door_stone_normal.png'),load('artC','assets/doors/door_stone_cracked.png'),load('artB','assets/doors/door_stone_broken.png'),
+ load('d4N','assets/doors/door_depth4_normal.png'),load('d4C','assets/doors/door_depth4_cracked.png'),load('d4B','assets/doors/door_depth4_broken.png'),
+ load('secret','assets/ui/SecretKey.png'),
+ load('rock','assets/obstacles/falling_rock.png'),
+ load('spike','assets/obstacles/spike_crystal.png'),
+ load('cart','assets/obstacles/mine_cart.png'),
+ load('bat','assets/obstacles/bat.png'),
+ load('guard','assets/obstacles/stone_guard.png'),
+ load('checkpoint','assets/obstacles/checkpoint_lamp.png'),
+ load('deadend','assets/rooms/depth4_deadend.png'),
+ load('keyPedestal','assets/ui/depth4_key_pedestal_approved.png')
+];
+coinFiles.forEach((s,i)=>jobs.push(load('coin'+i,s)));
+
+const RETURN_WEB_URL='https://mineow.space/#depth3';
+let scene='main', t=0, last=performance.now(), cameraX=0, coinCount=0, hasKey=false;
+let depth4ActivationStart=0;
+let depth4TransitionQueued=false;
+let depth4ReturnReady=false;
+const mainWorld=4600;
+const GROUND_Y=575;
+const player={x:188,y:GROUND_Y-176,w:118,h:176,vx:0,vy:0,onGround:true,face:1,state:'idle',smashUntil:0};
+const doors=[
+ {kind:'merch',x:1080,y:GROUND_Y-306,w:220,h:306,hits:0,room:'merch'},
+ {kind:'artifact',x:2550,y:GROUND_Y-316,w:228,h:316,hits:0,room:'artifact'},
+ {kind:'depth4',x:4080,y:GROUND_Y-318,w:230,h:318,hits:0,room:'deadend'}
+];
+const coins=[
+ {x:360,y:GROUND_Y-72,taken:false},{x:500,y:GROUND_Y-72,taken:false},{x:720,y:GROUND_Y-72,taken:false},
+ {x:1510,y:GROUND_Y-72,taken:false},{x:1850,y:GROUND_Y-72,taken:false},{x:2220,y:GROUND_Y-72,taken:false},
+ {x:3000,y:GROUND_Y-72,taken:false},{x:3380,y:GROUND_Y-72,taken:false},{x:3850,y:GROUND_Y-72,taken:false}
+];
+const gaps=[
+ {x:610,w:118},
+ {x:1718,w:108},
+ {x:3280,w:124}
+];
+const spikes=[
+ {x:1515,w:116},{x:2020,w:126}
+];
+const carts=[
+ {x:820,min:780,max:965,speed:74,dir:1,w:118,h:78,hp:3,destroyed:false},
+ {x:2150,min:2070,max:2350,speed:118,dir:-1,w:126,h:82,hp:3,destroyed:false},
+ {x:3820,min:3710,max:3990,speed:138,dir:1,w:132,h:84,hp:3,destroyed:false}
+];
+const rockZones=[
+ {x:440,dropX:500,phase:0,period:4.4},
+ {x:3090,dropX:3135,phase:.7,period:4.0},
+ {x:3470,dropX:3515,phase:1.3,period:3.8}
+];
+const bats=[{x:1880,min:1780,max:1980,speed:105,dir:1,y:365,w:96,h:54}];
+const guards=[{x:3590,min:3530,max:3680,speed:64,dir:-1,w:74,h:110}];
+const checkpoints=[
+ {x:150,active:true},
+ {x:1370,active:false},
+ {x:1875,active:false},
+ {x:2860,active:false},
+ {x:3435,active:false}
+];
+let checkpointX=188;
+const ROOM_FLOOR_Y=628;
+const ROOM_PLAYER_W=104;
+const ROOM_PLAYER_H=144;
+let roomPlayer={x:640,y:ROOM_FLOOR_Y-ROOM_PLAYER_H,w:ROOM_PLAYER_W,h:ROOM_PLAYER_H,vx:0,vy:0,face:1,state:'idle',onGround:true,smashUntil:0};
+const ARTIFACT_KEY={x:118,y:478,w:82,h:82};
+const ROOM_BONUS_COINS={
+ merch:[
+  {x:350,y:452,r:24,taken:false},
+  {x:600,y:430,r:24,taken:false},
+  {x:860,y:452,r:24,taken:false}
+ ],
+ artifact:[
+  {x:430,y:452,r:24,taken:false},
+  {x:700,y:430,r:24,taken:false},
+  {x:950,y:452,r:24,taken:false}
+ ]
+};
+const DEADEND_FLOOR_Y=626;
+const DEPTH4_PEDESTAL={x:520,y:276,w:240,h:320};
+let deadendPlayer={x:220,y:DEADEND_FLOOR_Y-152,w:106,h:152,vx:0,vy:0,face:1,state:'idle',onGround:true,smashUntil:0};
+let msgTimer=0;
+let hazardSafeUntil=0;
+let deadendUnlocked=false;
+const coinEl=document.getElementById('coins'), keyEl=document.getElementById('key');
+const back=document.getElementById('back'), returnWeb=document.getElementById('returnWeb'), webExit=document.getElementById('webExit'), message=document.getElementById('message');
+function say(s,ms=1300){}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function near(a,b,d){return Math.abs(a-b)<d}
+function goToDepth3Web(){try{window.top.location.href=RETURN_WEB_URL}catch(e){location.href=RETURN_WEB_URL}}
+function drawCover(im,x,y,w,h,alpha=1){if(!im)return;ctx.save();ctx.globalAlpha=alpha;let s=Math.max(w/im.width,h/im.height),sw=im.width*s,sh=im.height*s;ctx.drawImage(im,x+(w-sw)/2,y+(h-sh)/2,sw,sh);ctx.restore()}
+function drawContain(im,x,y,w,h){if(!im)return;let s=Math.min(w/im.width,h/im.height),sw=im.width*s,sh=im.height*s;ctx.drawImage(im,x+(w-sw)/2,y+(h-sh)/2,sw,sh)}
+
+const input={x:0,y:0,jump:false,smash:false};
+let joyId=null,joyRect=null;
+const joy=document.getElementById('joy'),knob=document.getElementById('knob');
+function joyMove(clientX,clientY){
+ joyRect=joy.getBoundingClientRect(); let cx=joyRect.left+joyRect.width/2, cy=joyRect.top+joyRect.height/2;
+ let dx=clientX-cx,dy=clientY-cy, m=Math.hypot(dx,dy),max=42;if(m>max){dx*=max/m;dy*=max/m}
+ knob.style.transform=`translate(${dx}px,${dy}px)`;input.x=dx/max;input.y=dy/max;
+}
+joy.addEventListener('pointerdown',e=>{joyId=e.pointerId;joy.setPointerCapture(e.pointerId);joyMove(e.clientX,e.clientY)});
+joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e.clientX,e.clientY)});
+function joyEnd(e){if(e.pointerId===joyId){joyId=null;input.x=input.y=0;knob.style.transform=''}}
+joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);
+
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();input.jump=true;setTimeout(()=>input.jump=false,90)});
+document.getElementById('smash').addEventListener('pointerdown',e=>{e.preventDefault();input.smash=true;setTimeout(()=>input.smash=false,90)});
+back.addEventListener('pointerdown',()=>goMain());
+webExit.addEventListener('pointerdown',goToDepth3Web);
+returnWeb.addEventListener('click',goToDepth3Web);
+
+window.addEventListener('keydown',e=>{
+ if(e.key==='ArrowLeft'||e.key==='a')input.x=-1;
+ if(e.key==='ArrowRight'||e.key==='d')input.x=1;
+ if(e.key==='ArrowUp'||e.key==='w')input.y=-1;
+ if(e.key==='ArrowDown'||e.key==='s')input.y=1;
+ if(e.key===' '||e.key==='ArrowUp') input.jump=true;
+ if(e.key==='x'||e.key==='e') input.smash=true;
+});
+window.addEventListener('keyup',e=>{
+ if(['ArrowLeft','ArrowRight','a','d'].includes(e.key))input.x=0;
+ if(['ArrowUp','ArrowDown','w','s'].includes(e.key))input.y=0;
+ if(e.key===' ')input.jump=false;if(e.key==='x'||e.key==='e')input.smash=false;
+});
+
+function goMain(){
+ scene='main';roomPlayer.x=640;roomPlayer.y=ROOM_FLOOR_Y-roomPlayer.h;deadendPlayer.x=220;deadendPlayer.y=DEADEND_FLOOR_Y-deadendPlayer.h;
+ back.style.display='none';returnWeb.style.display='none';
+ depth4ReturnReady=false;
+ player.x=clamp(player.x,80,mainWorld-150);
+}
+function goRoom(kind){
+ scene=kind;
+ roomPlayer.x=640;
+ roomPlayer.y=ROOM_FLOOR_Y-roomPlayer.h;
+ roomPlayer.vx=0; roomPlayer.vy=0; roomPlayer.state='idle'; roomPlayer.onGround=true; roomPlayer.smashUntil=0;
+ deadendPlayer.x=220;
+ deadendPlayer.y=DEADEND_FLOOR_Y-deadendPlayer.h;
+ deadendPlayer.vx=0; deadendPlayer.vy=0; deadendPlayer.state='idle'; deadendPlayer.onGround=true; deadendPlayer.smashUntil=0;
+ roomPrevSmash=false; roomPrevJump=false;
+
+ back.style.display='flex';
+ returnWeb.style.display='none';
+ depth4ReturnReady=false;
+
+ if(kind==='artifact'){
+   // No added story panel. The existing Secret Key asset remains the only collectible.
+ }
+
+ if(kind==='deadend'){
+   depth4TransitionQueued=false;
+ }
+
+ if(kind==='depth4secret'){
+   back.style.display='none';
+   returnWeb.style.display='block';
+   depth4ReturnReady=true;
+   deadendPlayer.x=188;
+   deadendPlayer.y=DEADEND_FLOOR_Y-deadendPlayer.h;
+   deadendPlayer.vx=0; deadendPlayer.vy=0; deadendPlayer.face=1;
+   deadendPlayer.state='idle'; deadendPlayer.onGround=true; deadendPlayer.smashUntil=0;
+ }
+}
+function doorImage(d){
+ let s=d.hits===0?'N':(d.hits<3?'C':'B');
+ return img[(d.kind==='merch'?'merch':d.kind==='artifact'?'art':'d4')+s];
+}
+let prevSmash=false, prevJump=false, roomPrevSmash=false, roomPrevJump=false;
+function rectHit(ax,ay,aw,ah,bx,by,bw,bh){
+ return ax<bx+bw && ax+aw>bx && ay<by+bh && ay+ah>by;
+}
+
+// Full restart when Miner Cat has no coins left.
+function restartFromBeginning(){
+ scene='main';
+ back.style.display='none';
+ returnWeb.style.display='none';
+
+ coinCount=0;
+ coinEl.textContent='0';
+ hasKey=false;
+ keyEl.textContent='0';
+ deadendUnlocked=false;
+ depth4TransitionQueued=false;
+ depth4ReturnReady=false;
+
+ // Respawn all collectible coins.
+ coins.forEach(c=>c.taken=false);
+ Object.values(ROOM_BONUS_COINS).flat().forEach(c=>c.taken=false);
+
+ // Reset doors.
+ doors.forEach(d=>d.hits=0);
+
+ // Reset checkpoints so the run really begins from the start.
+ checkpoints.forEach((c,i)=>c.active=(i===0));
+ checkpointX=188;
+
+ // Restore destructible carts.
+ carts.forEach(c=>{
+   c.destroyed=false;
+   c.hp=3;
+ });
+
+ player.x=188;
+ player.y=GROUND_Y-player.h;
+ player.vx=0;
+ player.vy=0;
+ player.onGround=true;
+ player.face=1;
+ player.state='idle';
+ cameraX=0;
+
+ roomPlayer.x=640;
+ roomPlayer.y=ROOM_FLOOR_Y-roomPlayer.h;
+ deadendPlayer.x=220;
+ deadendPlayer.y=DEADEND_FLOOR_Y-deadendPlayer.h;
+
+ hazardSafeUntil=t+1.0;
+}
+
+// Lose exactly one coin per real hit/fall.
+// Returns true when the whole run was restarted.
+function loseCoin(){
+ if(coinCount>0){
+   coinCount--;
+   coinEl.textContent=coinCount;
+ }
+
+ if(coinCount<=0){
+   restartFromBeginning();
+   return true;
+ }
+ return false;
+}
+
+function respawn(reason=''){
+ // Falling into a hole costs one coin.
+ if(loseCoin()) return;
+
+ player.x=checkpointX;
+ player.y=GROUND_Y-player.h;
+ player.vx=0;
+ player.vy=0;
+ player.onGround=true;
+ hazardSafeUntil=t+.85;
+}
+function bumpBack(reason=''){
+ if(t<hazardSafeUntil) return;
+ hazardSafeUntil=t+.85;
+
+ // Every actual collision costs one coin.
+ if(loseCoin()) return;
+
+ const oldX=player.x;
+ const push=48;
+ player.x=clamp(player.x-player.face*push,35,mainWorld-120);
+
+ // Never let a hazard knock Miner Cat into the middle of a gap.
+ const feetAfter=player.x+player.w*.5;
+ if(overGap(feetAfter)) player.x=oldX;
+
+ player.y=Math.min(player.y,GROUND_Y-player.h-6);
+ player.vy=-170;
+ player.onGround=false;
+}
+function overGap(x){
+ return gaps.some(g=>{
+   const lip=6;
+   return x>g.x+lip && x<g.x+g.w-lip;
+ });
+}
+function updateMain(dt){
+ const speed=315;
+ player.vx=input.x*speed;
+ if(Math.abs(input.x)>.12){player.face=Math.sign(input.x);player.state='run'} else player.state='idle';
+ if(input.jump && !prevJump && player.onGround){player.vy=-600;player.onGround=false;player.state='jump'}
+ player.vy += 1520*dt;
+ player.x+=player.vx*dt;
+ player.y+=player.vy*dt;
+
+ // Proper gap physics:
+ // Miner Cat cannot walk across a hole. Entering a gap removes ground support.
+ // A successful jump must carry the cat fully past the gap before landing.
+ const feetX=player.x+player.w*.5;
+ const leftFoot=player.x+player.w*.28;
+ const rightFoot=player.x+player.w*.72;
+
+ const centerOverGap=overGap(feetX);
+ const leftOverGap=overGap(leftFoot);
+ const rightOverGap=overGap(rightFoot);
+
+ // Find the gap currently under the player center, if any.
+ const activeGap=gaps.find(g=>feetX>g.x && feetX<g.x+g.w);
+
+ if(centerOverGap){
+   player.onGround=false;
+ }else if(player.y+player.h>=GROUND_Y && player.vy>=0){
+   // Landing is only valid when the player's center is on solid ground.
+   player.y=GROUND_Y-player.h;
+   player.vy=0;
+   player.onGround=true;
+ }
+
+ // Extra protection against "walking across" by edge-snapping:
+ // if the cat is grounded and either foot has entered a hole, drop immediately.
+ if(player.onGround && (leftOverGap || rightOverGap)){
+   player.onGround=false;
+   player.y+=3;
+   if(player.vy<80) player.vy=80;
+ }
+
+ if(player.y>H+120){respawn('TRY AGAIN');}
+
+ player.x=clamp(player.x,35,mainWorld-120);
+ cameraX=clamp(player.x-W*.38,0,mainWorld-W);
+
+ // Checkpoints
+ checkpoints.forEach((c,i)=>{
+   if(!c.active && player.x>c.x){
+     c.active=true; checkpointX=c.x; say('CHECKPOINT',850);
+   }
+ });
+
+ // Moving carts: can be jumped over OR smashed 3 times.
+ carts.forEach(c=>{
+   if(c.destroyed) return;
+   c.x += c.dir*c.speed*dt;
+   if(c.x<c.min){c.x=c.min;c.dir=1}
+   if(c.x>c.max){c.x=c.max;c.dir=-1}
+
+   const cartTop=GROUND_Y-c.h;
+   const horizontalOverlap = player.x+player.w>c.x+8 && player.x<c.x+c.w-8;
+   const playerFeet = player.y+player.h;
+   const actuallyHitsCart = horizontalOverlap && playerFeet>cartTop+26 && player.y<GROUND_Y-8;
+
+   if(input.smash && !prevSmash && near(player.x+player.w*.5,c.x+c.w*.5,125)){
+     c.hp--;
+     if(c.hp<=0){c.destroyed=true;say('CART SMASHED!',900);}
+     else {say(c.hp===2?'CLANG!':'CRACK!',650);c.dir*=-1;}
+   } else if(actuallyHitsCart){
+     bumpBack('MINE CART!');
+   }
+ });
+
+ // Bat
+ bats.forEach(b=>{
+   b.x+=b.dir*b.speed*dt;
+   if(b.x<b.min){b.x=b.min;b.dir=1}
+   if(b.x>b.max){b.x=b.max;b.dir=-1}
+   b.y=350+Math.sin(t*3.4)*28;
+   if(rectHit(player.x,player.y,player.w,player.h,b.x,b.y,b.w,b.h)) bumpBack('WATCH THE BAT');
+ });
+
+ // Stone guard
+ guards.forEach(g=>{
+   g.x+=g.dir*g.speed*dt;
+   if(g.x<g.min){g.x=g.min;g.dir=1}
+   if(g.x>g.max){g.x=g.max;g.dir=-1}
+   if(rectHit(player.x,player.y,player.w,player.h,g.x,GROUND_Y-g.h,g.w,g.h)){
+     if(input.smash && !prevSmash){g.x+=player.face*75;}
+     else bumpBack('STONE GUARD');
+   }
+ });
+
+ // Crystal hazards:
+ // Jumping over them is always safe. They only hurt when Miner Cat is actually
+ // on the ground and the CENTER of the cat is inside the sharp crystal zone.
+ spikes.forEach(s=>{
+   const dangerLeft=s.x+30;
+   const dangerRight=s.x+s.w-30;
+   const centerX=player.x+player.w*.5;
+   const feetY=player.y+player.h;
+
+   const groundedContact =
+     player.onGround &&
+     feetY>=GROUND_Y-3 &&
+     centerX>dangerLeft &&
+     centerX<dangerRight;
+
+   if(groundedContact && t>=hazardSafeUntil){
+     hazardSafeUntil=t+.85;
+
+     // Crystal contact costs one coin.
+     if(loseCoin()) return;
+
+     const crystalCenter=s.x+s.w*.5;
+     const dir=centerX<crystalCenter ? -1 : 1;
+     player.x=clamp(player.x+dir*92,35,mainWorld-120);
+     player.y=GROUND_Y-player.h-8;
+     player.vy=-230;
+     player.onGround=false;
+   }
+ });
+
+ // Falling rocks: slower descent with a short warning window.
+ rockZones.forEach(r=>{
+   let cycle=(t+r.phase)%r.period;
+   const warnTime=.65;
+   const fallTime=1.85;
+   let ry;
+   if(cycle<warnTime){
+     ry=-120;
+   }else if(cycle<warnTime+fallTime){
+     const p=(cycle-warnTime)/fallTime;
+     ry=-120 + p*(GROUND_Y+80);
+   }else{
+     ry=GROUND_Y+90;
+   }
+   r.rockY=ry;
+   r.warning = cycle<warnTime;
+   if(t>=hazardSafeUntil &&
+      Math.abs(player.x-r.x)<210 &&
+      cycle>=warnTime && cycle<warnTime+fallTime &&
+      rectHit(player.x+18,player.y+12,player.w-36,player.h-18,r.dropX+12,ry+12,58,58)){
+      bumpBack('FALLING ROCK');
+   }
+ });
+
+ if(input.smash && !prevSmash){
+   player.smashUntil=t+.18;player.state='smash';
+   const cartNearby=carts.some(c=>!c.destroyed && near(player.x+player.w*.5,c.x+c.w*.5,125));
+   if(!cartNearby){
+     let d=doors.find(d=>near(player.x+player.w*.5,d.x+d.w*.5,175));
+     if(d && d.hits<3){
+       d.hits++;
+       say(d.hits===1?'CLANG!':d.hits===2?'CRACK!':'THE DOOR IS OPEN');
+     }
+   }
+ }
+ if(t<player.smashUntil)player.state='smash';
+
+ coins.forEach(c=>{
+   if(!c.taken && near(player.x,c.x,68)){
+     c.taken=true; coinCount++; coinEl.textContent=coinCount;
+   }
+ });
+
+ if(input.y<-.55){
+   let d=doors.find(d=>d.hits>=3 && near(player.x+player.w*.5,d.x+d.w*.5,145));
+   if(d)goRoom(d.room);
+ }
+ prevSmash=input.smash; prevJump=input.jump;
+}
+function updateRoom(dt){
+ const speed=255;
+ const gravity=1520;
+ const jumpPower=-585;
+
+ if(scene==='depth4secret'){
+   roomPrevSmash=input.smash;
+   roomPrevJump=input.jump;
+   return;
+ }
+
+ if(scene==='deadend'){
+   deadendPlayer.vx=input.x*(deadendPlayer.onGround?speed:280);
+
+   if(input.jump && !roomPrevJump && deadendPlayer.onGround){
+     deadendPlayer.vy=jumpPower;
+     deadendPlayer.onGround=false;
+     deadendPlayer.state='jump';
+   }
+
+   if(input.smash && !roomPrevSmash){
+     deadendPlayer.smashUntil=t+.18;
+     deadendPlayer.state='smash';
+   }
+
+   deadendPlayer.vy += gravity*dt;
+   deadendPlayer.x=clamp(deadendPlayer.x+deadendPlayer.vx*dt,90,1120);
+   deadendPlayer.y += deadendPlayer.vy*dt;
+
+   if(deadendPlayer.y+deadendPlayer.h>=DEADEND_FLOOR_Y && deadendPlayer.vy>=0){
+     deadendPlayer.y=DEADEND_FLOOR_Y-deadendPlayer.h;
+     deadendPlayer.vy=0;
+     deadendPlayer.onGround=true;
+   }
+
+   if(Math.abs(input.x)>.12) deadendPlayer.face=Math.sign(input.x);
+
+   if(t<deadendPlayer.smashUntil){
+     deadendPlayer.state='smash';
+   }else if(!deadendPlayer.onGround){
+     deadendPlayer.state='jump';
+   }else if(Math.abs(input.x)>.12){
+     deadendPlayer.state='run';
+   }else{
+     deadendPlayer.state='idle';
+   }
+
+   const pedestalHit={
+     x:DEPTH4_PEDESTAL.x+54,
+     y:DEADEND_FLOOR_Y-76,
+     w:DEPTH4_PEDESTAL.w-108,
+     h:82
+   };
+   const touchesPedestal = rectHit(
+     deadendPlayer.x+12,deadendPlayer.y+8,deadendPlayer.w-24,deadendPlayer.h-10,
+     pedestalHit.x,pedestalHit.y,pedestalHit.w,pedestalHit.h
+   );
+
+   if(hasKey && touchesPedestal && !depth4TransitionQueued){
+     depth4TransitionQueued=true;
+     depth4ActivationStart=t;
+     hasKey=false;
+     keyEl.textContent='0';
+     deadendPlayer.vx=0;
+     deadendPlayer.state='idle';
+     setTimeout(()=>{
+       if(scene==='deadend') goRoom('depth4secret');
+     },700);
+   }
+
+   roomPrevSmash=input.smash;
+   roomPrevJump=input.jump;
+   return;
+ }
+
+ // MerchRoom + ArtifactRoom: full platform movement.
+ roomPlayer.vx=input.x*(roomPlayer.onGround?speed:280);
+
+ if(input.jump && !roomPrevJump && roomPlayer.onGround){
+   roomPlayer.vy=jumpPower;
+   roomPlayer.onGround=false;
+   roomPlayer.state='jump';
+ }
+
+ if(input.smash && !roomPrevSmash){
+   roomPlayer.smashUntil=t+.18;
+   roomPlayer.state='smash';
+ }
+
+ roomPlayer.vy += gravity*dt;
+ roomPlayer.x=clamp(roomPlayer.x+roomPlayer.vx*dt,90,1190);
+ roomPlayer.y += roomPlayer.vy*dt;
+
+ if(roomPlayer.y+roomPlayer.h>=ROOM_FLOOR_Y && roomPlayer.vy>=0){
+   roomPlayer.y=ROOM_FLOOR_Y-roomPlayer.h;
+   roomPlayer.vy=0;
+   roomPlayer.onGround=true;
+ }
+
+ if(Math.abs(input.x)>.12) roomPlayer.face=Math.sign(input.x);
+
+ if(t<roomPlayer.smashUntil){
+   roomPlayer.state='smash';
+ }else if(!roomPlayer.onGround){
+   roomPlayer.state='jump';
+ }else if(Math.abs(input.x)>.12){
+   roomPlayer.state='run';
+ }else{
+   roomPlayer.state='idle';
+ }
+
+ // Bonus coins: positioned high enough that Miner Cat must jump to reach them.
+ if(scene==='merch' || scene==='artifact'){
+   const list=ROOM_BONUS_COINS[scene];
+   list.forEach(c=>{
+     if(!c.taken){
+       const touchesCoin=rectHit(
+         roomPlayer.x+12,roomPlayer.y+8,roomPlayer.w-24,roomPlayer.h-12,
+         c.x-c.r,c.y-c.r,c.r*2,c.r*2
+       );
+       if(touchesCoin){
+         c.taken=true;
+         coinCount++;
+         coinEl.textContent=coinCount;
+       }
+     }
+   });
+ }
+
+ // Secret Key is acquired ONLY when Miner Cat actually touches the visible key.
+ if(scene==='artifact' && !hasKey){
+   const touchesKey = rectHit(
+     roomPlayer.x+10, roomPlayer.y+8, roomPlayer.w-20, roomPlayer.h-8,
+     ARTIFACT_KEY.x, ARTIFACT_KEY.y, ARTIFACT_KEY.w, ARTIFACT_KEY.h
+   );
+   if(touchesKey){
+     hasKey=true;
+     keyEl.textContent='1';
+   }
+ }
+
+ roomPrevSmash=input.smash;
+ roomPrevJump=input.jump;
+}
+function drawMain(){
+ ctx.fillStyle='#050403';ctx.fillRect(0,0,W,H);
+ ctx.drawImage(img.main, -cameraX, 0, mainWorld, H);
+ ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='rgba(20,30,45,.08)';ctx.fillRect(0,0,W,H);
+
+ // Gaps are drawn as deep dark openings in the walkway.
+ gaps.forEach(g=>{
+   let sx=g.x-cameraX;
+   if(sx>-g.w&&sx<W+g.w){
+     let grad=ctx.createLinearGradient(0,GROUND_Y-18,0,H);
+     grad.addColorStop(0,'rgba(10,7,5,.35)'); grad.addColorStop(.2,'rgba(0,0,0,.96)'); grad.addColorStop(1,'#000');
+     ctx.fillStyle=grad; ctx.fillRect(sx,GROUND_Y-4,g.w,H-GROUND_Y+10);
+     ctx.strokeStyle='rgba(149,96,42,.65)';ctx.lineWidth=5;
+     ctx.beginPath();ctx.moveTo(sx,GROUND_Y);ctx.lineTo(sx+g.w,GROUND_Y);ctx.stroke();
+   }
+ });
+
+ // Checkpoint lamps
+ checkpoints.forEach(c=>{
+   let sx=c.x-cameraX;
+   if(sx>-100&&sx<W+100){
+     ctx.save();ctx.globalAlpha=c.active?1:.55;drawContain(img.checkpoint,sx-42,GROUND_Y-170,84,150);ctx.restore();
+   }
+ });
+
+ // Coins
+ const frame=Math.floor(t/0.065)%12;
+ coins.forEach(c=>{if(!c.taken){let sx=c.x-cameraX;if(sx>-80&&sx<W+80)drawContain(img['coin'+frame],sx-30,c.y-30,60,60)}});
+
+ // Hazards
+ spikes.forEach(s=>{let sx=s.x-cameraX;if(sx>-150&&sx<W+150)drawContain(img.spike,sx+10,GROUND_Y-54,Math.max(40,s.w-20),54)});
+ carts.forEach(c=>{
+   if(!c.destroyed){
+     let sx=c.x-cameraX;
+     if(sx>-180&&sx<W+180){
+       drawContain(img.cart,sx,GROUND_Y-c.h,c.w,c.h);
+       if(c.hp<3){
+         ctx.save();ctx.strokeStyle='rgba(255,210,120,.8)';ctx.lineWidth=3;ctx.beginPath();
+         ctx.moveTo(sx+c.w*.42,GROUND_Y-c.h*.78);ctx.lineTo(sx+c.w*.52,GROUND_Y-c.h*.55);ctx.lineTo(sx+c.w*.44,GROUND_Y-c.h*.34);
+         if(c.hp===1){ctx.moveTo(sx+c.w*.62,GROUND_Y-c.h*.72);ctx.lineTo(sx+c.w*.54,GROUND_Y-c.h*.48);ctx.lineTo(sx+c.w*.68,GROUND_Y-c.h*.27);}
+         ctx.stroke();ctx.restore();
+       }
+     }
+   }
+ });
+ bats.forEach(b=>{let sx=b.x-cameraX;if(sx>-120&&sx<W+120)drawContain(img.bat,sx,b.y,b.w,b.h)});
+ guards.forEach(g=>{let sx=g.x-cameraX;if(sx>-120&&sx<W+120)drawContain(img.guard,sx,GROUND_Y-g.h,g.w,g.h)});
+ rockZones.forEach(r=>{
+   if(Math.abs(player.x-r.x)<320){
+     let sx=r.dropX-cameraX;
+     if(r.warning){
+       ctx.save();
+       ctx.fillStyle='rgba(255,200,90,.22)';
+       ctx.beginPath();
+       ctx.ellipse(sx+41,GROUND_Y+4,30,8,0,0,Math.PI*2);
+       ctx.fill();
+       ctx.restore();
+     }
+     if(r.rockY<GROUND_Y+70)drawContain(img.rock,sx,r.rockY,82,82);
+   }
+ });
+
+ // Doors — no labels.
+ doors.forEach(d=>{
+   let sx=d.x-cameraX;
+   if(sx>-d.w&&sx<W+d.w)drawContain(doorImage(d),sx,d.y,d.w,d.h);
+ });
+
+ // Player shadow exactly on the walkway.
+ ctx.save();
+ ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();
+ ctx.ellipse(player.x-cameraX+player.w*.5,GROUND_Y+4,player.w*.33,8,0,0,Math.PI*2);ctx.fill();ctx.restore();
+
+ let pimg=img.idle;
+ if(player.state==='run')pimg=img[['walk1','walk2','walk3','walk4'][Math.floor(t/.115)%4]];
+ else if(player.state==='jump')pimg=img.jumpP;
+ else if(player.state==='smash'){
+   const smashProgress=clamp(1-(player.smashUntil-t)/.18,0,1);
+   pimg=smashProgress<.52?img.smash1:img.smash2;
+ }
+
+ ctx.save();let sx=player.x-cameraX;
+ if(player.face<0){ctx.translate(sx+player.w,0);ctx.scale(-1,1);drawContain(pimg,0,player.y,player.w,player.h)}
+ else drawContain(pimg,sx,player.y,player.w,player.h);
+ ctx.restore();
+}
+function drawRoom(){
+ ctx.fillStyle='#060403';
+ ctx.fillRect(0,0,W,H);
+
+ if(scene==='depth4secret'){
+   drawCover(img.depth4,0,0,W,H);
+
+   const pulse=.5+.5*Math.sin(t*3.0);
+   const gateGlow=ctx.createRadialGradient(640,390,20,640,390,250);
+   gateGlow.addColorStop(0,`rgba(73,157,255,${.16+.10*pulse})`);
+   gateGlow.addColorStop(.55,`rgba(39,101,190,${.07+.05*pulse})`);
+   gateGlow.addColorStop(1,'rgba(0,0,0,0)');
+   ctx.fillStyle=gateGlow;
+   ctx.fillRect(360,145,560,485);
+   return;
+ }
+
+ if(scene==='deadend'){
+   // Reuse the EXISTING Depth 4 chamber artwork instead of the old black-board deadend.
+   drawCover(img.depth4,0,0,W,H);
+
+   // Keep it darker while the ancient seal is still locked.
+   ctx.fillStyle='rgba(0,5,12,.30)';
+   ctx.fillRect(0,0,W,H);
+
+   const gateX=640, gateY=390;
+
+   // Approved key-unlock pedestal is visible immediately on entry.
+   ctx.save();
+   const pedestalPulse=.5+.5*Math.sin(t*3.2);
+   if(hasKey){
+     ctx.shadowColor=`rgba(255,201,73,${.45+.20*pedestalPulse})`;
+     ctx.shadowBlur=24+12*pedestalPulse;
+   }
+   drawContain(img.keyPedestal,DEPTH4_PEDESTAL.x,DEPTH4_PEDESTAL.y,DEPTH4_PEDESTAL.w,DEPTH4_PEDESTAL.h);
+   ctx.restore();
+
+   // The seal response stays at floor level. Nothing flies in the air.
+   // Notification text removed as requested.
+
+   // Grounded shadow using the unchanged Miner Cat sprites.
+   ctx.save();
+   ctx.globalAlpha=.30;
+   ctx.fillStyle='#000';
+   ctx.beginPath();
+   ctx.ellipse(deadendPlayer.x+deadendPlayer.w*.5,DEADEND_FLOOR_Y+3,deadendPlayer.w*.34,7,0,0,Math.PI*2);
+   ctx.fill();
+   ctx.restore();
+
+   let pimg=img.idle;
+   if(deadendPlayer.state==='run'){
+     pimg=img[['walk1','walk2','walk3','walk4'][Math.floor(t/.115)%4]];
+   }else if(deadendPlayer.state==='jump'){
+     pimg=img.jumpP;
+   }else if(deadendPlayer.state==='smash'){
+     const p=clamp(1-(deadendPlayer.smashUntil-t)/.18,0,1);
+     pimg=p<.52?img.smash1:img.smash2;
+   }
+
+   if(deadendPlayer.face<0){
+     ctx.save();
+     ctx.translate(deadendPlayer.x+deadendPlayer.w,0);
+     ctx.scale(-1,1);
+     drawContain(pimg,0,deadendPlayer.y,deadendPlayer.w,deadendPlayer.h);
+     ctx.restore();
+   }else{
+     drawContain(pimg,deadendPlayer.x,deadendPlayer.y,deadendPlayer.w,deadendPlayer.h);
+   }
+   return;
+ }
+
+ // MerchRoom / ArtifactRoom backgrounds remain unchanged.
+ let bg=scene==='merch'?img.merchRoom:img.artifactRoom;
+ drawCover(bg,0,0,W,H);
+ ctx.fillStyle='rgba(0,0,0,.09)';
+ ctx.fillRect(0,0,W,H);
+
+ if(scene==='artifact'&&!hasKey){
+   // ORIGINAL SecretKey.png unchanged.
+   drawContain(img.secret,ARTIFACT_KEY.x,ARTIFACT_KEY.y,ARTIFACT_KEY.w,ARTIFACT_KEY.h);
+ }
+
+ // Bonus MINEOW coins in Door 1 / Door 2.
+ if(scene==='merch' || scene==='artifact'){
+   const list=ROOM_BONUS_COINS[scene];
+   list.forEach(c=>{
+     if(!c.taken){
+       const coinFrame=['coin1','coin2','coin3','coin4','coin5','coin6','coin7','coin8','coin9','coin10','coin11','coin12'][Math.floor(t/.065)%12];
+       drawContain(img[coinFrame],c.x-c.r,c.y-c.r,c.r*2,c.r*2);
+     }
+   });
+ }
+
+ ctx.save();
+ ctx.globalAlpha=.30;
+ ctx.fillStyle='#000';
+ ctx.beginPath();
+ ctx.ellipse(roomPlayer.x+roomPlayer.w*.5,ROOM_FLOOR_Y+3,roomPlayer.w*.34,7,0,0,Math.PI*2);
+ ctx.fill();
+ ctx.restore();
+
+ let pimg=img.idle;
+ if(roomPlayer.state==='run'){
+   pimg=img[['walk1','walk2','walk3','walk4'][Math.floor(t/.115)%4]];
+ }else if(roomPlayer.state==='jump'){
+   pimg=img.jumpP;
+ }else if(roomPlayer.state==='smash'){
+   const p=clamp(1-(roomPlayer.smashUntil-t)/.18,0,1);
+   pimg=p<.52?img.smash1:img.smash2;
+ }
+
+ ctx.save();
+ if(roomPlayer.face<0){
+   ctx.translate(roomPlayer.x+roomPlayer.w,0);
+   ctx.scale(-1,1);
+   drawContain(pimg,0,roomPlayer.y,roomPlayer.w,roomPlayer.h);
+ }else{
+   drawContain(pimg,roomPlayer.x,roomPlayer.y,roomPlayer.w,roomPlayer.h);
+ }
+ ctx.restore();
+}
+function loop(now){
+ const dt=Math.min(.033,(now-last)/1000);last=now;t+=dt;
+ if(scene==='main')updateMain(dt);else updateRoom(dt);
+ if(scene==='main')drawMain();else drawRoom();
+ requestAnimationFrame(loop);
+}
+Promise.all(jobs).then(()=>{coinEl.textContent='0';keyEl.textContent='0';requestAnimationFrame(loop)});
+})();
+</script>
+</body>
+</html>
